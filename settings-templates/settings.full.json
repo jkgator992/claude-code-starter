@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": ".claude/hooks/block-secrets.sh" },
+          { "type": "command", "command": ".claude/hooks/block-env-writes.sh" },
+          { "type": "command", "command": ".claude/hooks/check-secret-placement.sh" }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": ".claude/hooks/pre-commit-gate.sh" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": ".claude/hooks/auto-format.sh" },
+          { "type": "command", "command": ".claude/hooks/auto-lint.sh" },
+          { "type": "command", "command": ".claude/hooks/check-audit-log.sh" },
+          { "type": "command", "command": ".claude/hooks/check-bullmq-handlers.sh" },
+          { "type": "command", "command": ".claude/hooks/check-error-handling.sh" },
+          { "type": "command", "command": ".claude/hooks/capture-gotcha.sh" }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": ".claude/hooks/update-changelog.sh", "timeout": 10 }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": ".claude/hooks/inject-context.sh" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": ".claude/hooks/save-context.sh" },
+          { "type": "command", "command": ".claude/hooks/notify-done.sh" },
+          { "type": "command", "command": ".claude/hooks/verify-completion.sh" }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": ".claude/hooks/start-of-session.sh" }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          { "type": "command", "command": ".claude/hooks/end-of-session.sh" }
+        ]
+      }
+    ]
+  }
+}

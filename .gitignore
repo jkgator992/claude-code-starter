@@ -1,0 +1,22 @@
+# Installer state files (written at target-project install time)
+.claude-starter.log
+.claude-starter.state
+
+# Claude Code session artifacts — the starter is NOT a Claude Code project itself.
+# These are created by the harness if someone runs Claude Code inside this repo.
+.claude/settings.local.json
+.claude/sessions/
+.claude/audit.log
+.claude/last-session.md
+.claude/.types-stale
+.claude/.changelog-lastsha
+
+# Node / editor noise
+.DS_Store
+node_modules/
+*.log
+
+# Local scratch
+/tmp/
+/.idea/
+/.vscode/
