@@ -43,7 +43,7 @@ echo "# starter: $STARTER" >> "$LOG"
 echo "# target:  $TARGET"  >> "$LOG"
 
 # ─── Wizard ──────────────────────────────────────────────────────────────────
-echo "Starting wizard (7 questions)…" >&2
+echo "Starting wizard (10 questions)…" >&2
 wizard_out=$(bash "$STARTER/wizard.sh")
 answers=$(echo "$wizard_out" | tail -n +1 | tr -d '\n' | grep -o '{.*}$' || echo '{}')
 if [[ -z "$answers" || "$answers" == '{}' ]]; then
@@ -259,8 +259,8 @@ if [[ "$ENABLE_PARALLEL_DEV" == "yes" ]]; then
     chmod +x "$TARGET/.claude/hooks/check-migration-lock.sh" 2>/dev/null || true
   fi
 
-  if [[ -f "$STARTER/docs-templates/parallel-coordination-README.md" ]]; then
-    install_file "$STARTER/docs-templates/parallel-coordination-README.md" \
+  if [[ -f "$STARTER/templates/coordination-README.md" ]]; then
+    install_file "$STARTER/templates/coordination-README.md" \
                  "$TARGET/.claude/coordination/README.md"
   fi
 
