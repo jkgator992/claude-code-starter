@@ -102,7 +102,8 @@ install_file() {
   echo "" >&2
   printf "    [o]verwrite  [m]erge  [s]kip  > " >&2
   IFS= read -r decision </dev/tty || decision="s"
-  case "${decision,,}" in
+  decision_lower=$(printf "%s" "$decision" | tr "[:upper:]" "[:lower:]")
+  case "$decision_lower" in
     o|overwrite)
       cp "$src" "$dst"
       case "$src" in *.sh) chmod +x "$dst" ;; esac
@@ -313,7 +314,8 @@ stamp_template() {
   echo "" >&2
   printf "    [o]verwrite  [m]erge  [s]kip  > " >&2
   local d; IFS= read -r d </dev/tty || d="s"
-  case "${d,,}" in
+  d_lower=$(printf "%s" "$d" | tr "[:upper:]" "[:lower:]")
+  case "$d_lower" in
     o|overwrite) mv "$tmp" "$dst"; echo "overwrote  $dst" | tee -a "$LOG" >&2 ;;
     m|merge)
       local ed="${EDITOR:-vi}"
