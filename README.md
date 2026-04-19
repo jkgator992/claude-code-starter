@@ -9,10 +9,17 @@ any codebase — hooks, agents, skills, docs templates, and (optionally) the
 - **24 production hooks** — secret blockers, format-on-write, audit logging,
   pre-commit gate, session resume, auto-changelog, and framework-specific
   guards for Supabase / BullMQ / Next.js.
-- **10 specialist agents** — architect, backend, frontend, mobile, security,
-  qa, RLS auditor, layer enforcer, devops.
+- **12 specialist agents** — architect, backend-architect, frontend,
+  mobile-maestro, security, qa-tester, qa-automation, rls-auditor,
+  layer1-enforcer, devops, plus **optional** dispatcher and
+  pre-launch-auditor when you enable parallel dev / auditor features.
 - **5 skills** — operation templates, RLS test patterns, error taxonomy,
   learning capture, QA runbook.
+- **6 slash commands (optional)** — when parallel dev is enabled: ticket-start,
+  ticket-close, worktrees, backfill-tickets, batch-plan, triage-bug.
+- **6 runbook templates (optional)** — when auditor is enabled: backup-restore,
+  rollback, data-deletion, incident-response, bug-intake, parallel-development.
+- **k6 load test template (optional)** — Tier 2 pre-launch auditor gate.
 - **Docs scaffolding** — `gotchas.md`, `violations.md`, `traceability.md`,
   `completion-log.md`, `api-reference.md`, `test-registry.csv`.
 - **3 settings presets** — `full`, `supabase`, `minimal`.
@@ -29,7 +36,7 @@ bash /path/to/claude-code-starter/install.sh
 
 The installer will:
 
-1. Ask 7 questions about your project (name, stack, Supabase y/n, test
+1. Ask 10 questions about your project (name, stack, Supabase y/n, test
    runner, package manager, directory layout).
 2. Show a diff before overwriting any existing file; you choose
    **overwrite / merge / skip** per file.
@@ -80,7 +87,7 @@ Three-step install:
 > `plugins/install-plugins.sh` script handles the install — no Octopus
 > files are committed into your repo.
 
-## The 7 questions
+## The 10 questions
 
 The wizard asks (in order):
 
@@ -93,6 +100,22 @@ The wizard asks (in order):
 6. **Package manager** — npm / yarn / pnpm.
 7. **Auto-detect directory structure** — yes runs `ls` against your repo
    and tries to match common layouts (monorepo vs single app).
+
+8. **Enable parallel dev system?** — yes/no. Installs the `dispatcher` agent,
+   6 slash commands for Jira ticket lifecycle (`/ticket-start`, `/ticket-close`,
+   `/worktrees`, `/backfill-tickets`, `/batch-plan`, `/triage-bug`), and a
+   migration-lock hook that enforces one-worktree-per-migration across
+   parallel sessions. Opt in if you use Jira and want git-worktree-based
+   parallel development.
+9. **Enable pre-launch auditor + runbooks?** — yes/no. Installs the
+   `pre-launch-auditor` agent (3 tiers: pre-merge static, pre-promotion
+   dynamic, quarterly policy), 6 operational runbook templates, and a k6
+   smoke load test template. Opt in for production-bound projects.
+10. **Existing project?** — yes/no. Tells the installer this isn't a
+    fresh scaffold. When combined with the auditor, writes a
+    `.claude/pre-launch-config.json` enabling grandfather mode so the
+    auditor only blocks on findings in NEW code (files changed after the
+    current HEAD) while still tracking legacy findings.
 
 Every answer becomes a template substitution. Questions you skip leave a
 `TODO:` marker in the output so you can fill them in later.
@@ -118,7 +141,11 @@ claude-code-starter/
 │   ├── react-native/
 │   └── node/
 ├── skills/                  ← 5 SKILL.md files (always installed)
+├── commands/
+│   └── universal/           ← 6 optional slash commands (parallel dev)
 ├── docs-templates/          ← gotchas.md, violations.md, etc.
+│   └── runbooks/            ← 6 optional operational runbook templates
+├── templates/tests/load/    ← optional k6 smoke load test template
 ├── settings-templates/      ← full / supabase / minimal settings.json
 └── plugins/
     └── install-plugins.sh   ← Octopus installer

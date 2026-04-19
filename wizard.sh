@@ -67,6 +67,15 @@ ask_choice "6. Package manager" "npm|yarn|pnpm|pip|other" "$default_pm" PKG_MGR
 # 7. Auto-detect directory structure?
 ask_choice "7. Auto-detect directory structure?" "yes|no" "yes" AUTO_DETECT
 
+# 8. Parallel dev system?
+ask_choice "8. Enable parallel dev system (git worktrees + Jira ticket lifecycle)?" "yes|no" "no" ENABLE_PARALLEL_DEV
+
+# 9. Pre-launch auditor + runbooks?
+ask_choice "9. Enable pre-launch auditor + operational runbooks?" "yes|no" "yes" ENABLE_AUDITOR
+
+# 10. Existing project (not fresh scaffold)?
+ask_choice "10. Is this an existing project (has its own git history, existing agents/hooks)?" "yes|no" "no" EXISTING_PROJECT
+
 # ─── Directory detection (best-effort, informational) ────────────────────────
 DETECTED_LAYOUT="unknown"
 DETECTED_APPS="[]"
@@ -97,6 +106,9 @@ jq -n \
   --arg use_supabase   "$USE_SUPABASE" \
   --arg test_runner    "$TEST_RUNNER" \
   --arg pkg_mgr        "$PKG_MGR" \
+  --arg enable_parallel_dev "$ENABLE_PARALLEL_DEV" \
+  --arg enable_auditor "$ENABLE_AUDITOR" \
+  --arg existing_project "$EXISTING_PROJECT" \
   --arg auto_detect    "$AUTO_DETECT" \
   --arg layout         "$DETECTED_LAYOUT" \
   --argjson apps       "$DETECTED_APPS" \
@@ -108,6 +120,9 @@ jq -n \
     use_supabase: $use_supabase,
     test_runner: $test_runner,
     pkg_mgr: $pkg_mgr,
+    enable_parallel_dev: $enable_parallel_dev,
+    enable_auditor: $enable_auditor,
+    existing_project: $existing_project,
     auto_detect: $auto_detect,
     detected: {
       layout: $layout,

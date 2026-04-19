@@ -21,7 +21,7 @@ for the full overwrite policy.
 
 If you'd rather have Claude orchestrate the install for you, open Claude
 Code in your project root and paste everything in the fenced block below.
-Claude will run the wizard, ask you the 7 questions, and apply the
+Claude will run the wizard, ask you the 10 questions, and apply the
 selected files with a diff check on each overwrite.
 
 ````
