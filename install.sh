@@ -66,6 +66,9 @@ TECH_STACK=$(echo "$answers"   | jq -r .tech_stack)
 USE_SUPABASE=$(echo "$answers" | jq -r .use_supabase)
 TEST_RUNNER=$(echo "$answers"  | jq -r .test_runner)
 PKG_MGR=$(echo "$answers"      | jq -r .pkg_mgr)
+ENABLE_PARALLEL_DEV=$(echo "$answers" | jq -r .enable_parallel_dev)
+ENABLE_AUDITOR=$(echo "$answers"      | jq -r .enable_auditor)
+EXISTING_PROJECT=$(echo "$answers"    | jq -r .existing_project)
 
 # ─── File-by-file install ────────────────────────────────────────────────────
 # install_file <src> <dst>  — shows diff on conflict, prompts overwrite/merge/skip.
@@ -213,6 +216,59 @@ if [[ -d "$STARTER/docs-templates/tests" ]]; then
   done
 fi
 
+# ─── 6a. Runbooks + pre-launch-auditor (if auditor enabled) ────────────────
+if [[ "$ENABLE_AUDITOR" == "yes" ]]; then
+  if [[ -d "$STARTER/docs-templates/runbooks" ]]; then
+    for f in "$STARTER"/docs-templates/runbooks/*.md; do
+      [[ -e "$f" ]] || continue
+      install_file "$f" "$TARGET/docs/runbooks/$(basename "$f")"
+    done
+  fi
+
+  if [[ -f "$STARTER/agents/universal/pre-launch-auditor.md" ]]; then
+    install_file "$STARTER/agents/universal/pre-launch-auditor.md" \
+                 "$TARGET/.claude/agents/pre-launch-auditor.md"
+  fi
+
+  if [[ -f "$STARTER/templates/tests/load/smoke.k6.js" ]]; then
+    install_file "$STARTER/templates/tests/load/smoke.k6.js" \
+                 "$TARGET/tests/load/smoke.k6.js"
+    install_file "$STARTER/templates/tests/load/README.md" \
+                 "$TARGET/tests/load/README.md"
+  fi
+fi
+
+# ─── 6b. Parallel dev system (if enabled) ──────────────────────────────────
+if [[ "$ENABLE_PARALLEL_DEV" == "yes" ]]; then
+  if [[ -f "$STARTER/agents/universal/dispatcher.md" ]]; then
+    install_file "$STARTER/agents/universal/dispatcher.md" \
+                 "$TARGET/.claude/agents/dispatcher.md"
+  fi
+
+  if [[ -d "$STARTER/commands/universal" ]]; then
+    for f in "$STARTER"/commands/universal/*.md; do
+      [[ -e "$f" ]] || continue
+      install_file "$f" "$TARGET/.claude/commands/$(basename "$f")"
+    done
+  fi
+
+  if [[ "$USE_SUPABASE" == "yes" && -f "$STARTER/hooks/supabase/check-migration-lock.sh" ]]; then
+    install_file "$STARTER/hooks/supabase/check-migration-lock.sh" \
+                 "$TARGET/.claude/hooks/check-migration-lock.sh"
+    chmod +x "$TARGET/.claude/hooks/check-migration-lock.sh" 2>/dev/null || true
+  fi
+
+  if [[ -f "$STARTER/docs-templates/parallel-coordination-README.md" ]]; then
+    install_file "$STARTER/docs-templates/parallel-coordination-README.md" \
+                 "$TARGET/.claude/coordination/README.md"
+  fi
+
+  if [[ -f "$STARTER/templates/jira-ticket-template.md" ]]; then
+    install_file "$STARTER/templates/jira-ticket-template.md" \
+                 "$TARGET/.claude/templates/jira-ticket-template.md"
+  fi
+fi
+
 # ─── 7. CLAUDE.md / AGENTS.md with substitutions ─────────────────────────────
 stamp_template() {
   # stamp_template <src> <dst>  — substitutes known vars, leaves TODO: markers.
@@ -273,6 +329,26 @@ stamp_template() {
 stamp_template "$STARTER/templates/CLAUDE.md"  "$TARGET/CLAUDE.md"
 stamp_template "$STARTER/templates/AGENTS.md"  "$TARGET/AGENTS.md"
 
+# ─── 7a. Grandfather mode for existing projects with auditor ──────────────
+if [[ "$EXISTING_PROJECT" == "yes" && "$ENABLE_AUDITOR" == "yes" ]]; then
+  mkdir -p "$TARGET/.claude"
+  BASELINE_SHA=$(cd "$TARGET" && git rev-parse HEAD 2>/dev/null || echo "unknown")
+  cat > "$TARGET/.claude/pre-launch-config.json" <<GRANDFATHER_EOF
+{
+  "grandfather_baseline_sha": "$BASELINE_SHA",
+  "critical_path_globs": [
+    "apps/api/src/webhooks/**",
+    "apps/api/src/auth/**",
+    "packages/api/src/webhooks/**",
+    "packages/api/src/auth/**",
+    "supabase/migrations/**"
+  ],
+  "_note": "Grandfather mode ON. pre-launch-auditor only BLOCKs on findings in files changed after baseline SHA. Delete this file to return to strict mode."
+}
+GRANDFATHER_EOF
+  echo "installed  $TARGET/.claude/pre-launch-config.json (grandfather mode enabled)" | tee -a "$LOG" >&2
+fi
+
 # ─── 8. Summary ──────────────────────────────────────────────────────────────
 echo ""
 echo "=== install complete ==="
@@ -292,3 +368,43 @@ echo "  3. (Optional) Install Octopus multi-LLM plugin:"
 echo "     bash $STARTER/plugins/install-plugins.sh"
 echo "     then open Claude Code and run: /octo:setup"
 echo ""
+
+if [[ "$ENABLE_PARALLEL_DEV" == "yes" ]]; then
+  echo "Parallel dev system enabled. One-time setup:"
+  echo "  a) Create coordination directory (outside repo, visible from worktrees):"
+  echo "     COORD=\"\$(git rev-parse --git-common-dir)/../project-coordination\""
+  echo "     mkdir -p \"\$COORD\" && touch \"\$COORD/active-worktrees.md\""
+  echo "  b) Add to .gitignore: project-coordination/"
+  echo "  c) Fill in placeholders in .claude/commands/*.md"
+  echo "     (Jira cloud ID, Atlassian site URL)"
+  echo "  d) Wire check-migration-lock.sh into pre-commit-gate.sh"
+  echo "     (see docs/runbooks/parallel-development.md)"
+  echo ""
+fi
+
+if [[ "$ENABLE_AUDITOR" == "yes" ]]; then
+  echo "Pre-launch auditor enabled. First-week tasks:"
+  echo "  a) Fill in docs/runbooks/*.md placeholders (vendor contacts first)"
+  echo "  b) Run one drill per runbook to populate 'Last drill' timestamps"
+  echo "  c) Fill in tests/load/smoke.k6.js placeholders (staging URL, endpoints)"
+  echo "  d) Verify: run pre-launch-auditor tier 1 on HEAD (inside Claude Code)"
+  echo ""
+fi
+
+if [[ "$EXISTING_PROJECT" == "yes" ]]; then
+  echo "Existing-project install. Important reminders:"
+  echo ""
+  if [[ "$ENABLE_AUDITOR" == "yes" ]]; then
+    echo "  - Grandfather mode enabled for pre-launch-auditor"
+    echo "    Only new code (after current HEAD) will BLOCK; legacy findings tracked separately"
+  fi
+  if [[ "$ENABLE_PARALLEL_DEV" == "yes" ]]; then
+    echo "  - Migration-lock hook will block commits without a ticket worktree"
+    echo "    Announce to your team BEFORE merging this install"
+  fi
+  echo "  - Review every 'overwrote' entry in $LOG — those replaced existing content"
+  echo "  - Recommended first PR: install only; adopt new flow in follow-up PRs"
+  echo ""
+fi
+
+
