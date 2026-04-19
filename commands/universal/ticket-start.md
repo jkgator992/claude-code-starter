@@ -187,7 +187,37 @@ Atlassian API. Add a comment on the ticket:
 If the transition fails (permission, workflow config), warn but continue —
 the worktree is still usable.
 
-### 10. Print instructions for the user
+### 10. Install dependencies in the new worktree
+
+Detect the package manager by lockfile and run install. This keeps the
+user from hitting `tsc: command not found` (or similar) on their first
+commit in the fresh worktree.
+
+```bash
+if [[ -f "$WORKTREE_DIR/pnpm-lock.yaml" ]]; then
+  pm="pnpm"
+elif [[ -f "$WORKTREE_DIR/yarn.lock" ]]; then
+  pm="yarn"
+elif [[ -f "$WORKTREE_DIR/package-lock.json" ]]; then
+  pm="npm"
+else
+  pm=""
+fi
+
+if [[ -n "$pm" ]]; then
+  echo "Installing dependencies via $pm..."
+  (cd "$WORKTREE_DIR" && "$pm" install) || {
+    echo "WARNING: $pm install failed. You may need to run it manually before your first commit."
+  }
+else
+  echo "No lockfile detected — skipping dependency install."
+fi
+```
+
+If install fails, warn the user in the final summary but do not roll back
+the worktree — the user can run install manually after diagnosing.
+
+### 11. Print instructions for the user
 
 Final output block:
 
@@ -203,6 +233,7 @@ and run Phase 1 (Planning).
 
 Active worktrees: <count including this one>
 Migration lock: <held by this ticket | held by SCRUM-XXX | free>
+Dependencies: <installed via pnpm | installed via yarn | installed via npm | skipped (no lockfile) | install failed — run manually>
 
 To close when done:
   /ticket-close SCRUM-NNN

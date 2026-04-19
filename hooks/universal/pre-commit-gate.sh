@@ -60,7 +60,10 @@ fi
 
 # ─── Check 3: unresolved violations ─────────────────────────────────────────
 if [[ -f "docs/violations.md" ]]; then
-  unresolved=$(grep -c '^❌' docs/violations.md 2>/dev/null || echo 0)
+  # grep -c prints "0" and exits 1 on zero matches; `|| echo 0` would then
+  # duplicate the "0" and break `(( ... ))`. `|| true` just suppresses the
+  # failure; grep's own "0" output is what we want.
+  unresolved=$(grep -c '^❌' docs/violations.md 2>/dev/null || true)
   unresolved=${unresolved:-0}
   if (( unresolved > 0 )); then
     problems+=("docs/violations.md has ${unresolved} unresolved ❌ entries — mark ✅ or remove before committing")
