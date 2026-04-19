@@ -48,6 +48,18 @@ Auto-populated by hooks. Add entries manually or via `// GOTCHA:` /
 
 <!-- anchor: testing -->
 
+## Parallel Development
+
+<!-- anchor: parallel-dev -->
+
+- **Terminal commits vs. Claude Code commits.** As of starter v0.2.2,
+  parallel-dev installs a lightweight `.git/hooks/pre-commit` shim that
+  runs the migration-lock check on every git commit (terminal or
+  Claude Code). This closes the terminal-commit gap. The full
+  `pre-commit-gate.sh` (typecheck, lint, secret scan, etc.) still runs
+  only via Claude Code's PreToolUse hook — terminal commits skip those
+  heavier checks by design.
+
 ## General
 
 <!-- anchor: general -->

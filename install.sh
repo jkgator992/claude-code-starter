@@ -259,6 +259,47 @@ if [[ "$ENABLE_PARALLEL_DEV" == "yes" ]]; then
     chmod +x "$TARGET/.claude/hooks/check-migration-lock.sh" 2>/dev/null || true
   fi
 
+  # Install .git/hooks/pre-commit shim so terminal commits also hit the
+  # migration-lock gate (Claude Code PreToolUse already covers Claude's
+  # own commits via pre-commit-gate.sh).
+  if [[ -f "$STARTER/templates/git-hooks/pre-commit.sh" && -d "$TARGET/.git" ]]; then
+    git_pre_commit="$TARGET/.git/hooks/pre-commit"
+    git_pre_commit_src="$STARTER/templates/git-hooks/pre-commit.sh"
+    mkdir -p "$(dirname "$git_pre_commit")"
+    if [[ -e "$git_pre_commit" ]]; then
+      echo "" >&2
+      echo "⚠️  $git_pre_commit already exists." >&2
+      printf "    [s]kip  [o]verwrite  [b]ackup-and-install  > " >&2
+      IFS= read -r choice </dev/tty || choice="s"
+      choice_lower=$(printf "%s" "$choice" | tr "[:upper:]" "[:lower:]")
+      case "$choice_lower" in
+        o|overwrite)
+          cp "$git_pre_commit_src" "$git_pre_commit"
+          chmod +x "$git_pre_commit"
+          echo "overwrote  $git_pre_commit" | tee -a "$LOG" >&2
+          ;;
+        b|backup)
+          ts=$(date +%s)
+          mv "$git_pre_commit" "${git_pre_commit}.bak.${ts}"
+          cp "$git_pre_commit_src" "$git_pre_commit"
+          chmod +x "$git_pre_commit"
+          echo "backed up  ${git_pre_commit}.bak.${ts}" | tee -a "$LOG" >&2
+          echo "installed  $git_pre_commit" | tee -a "$LOG" >&2
+          ;;
+        *)
+          echo "skipped    $git_pre_commit (terminal commits will NOT be gated by migration-lock)" | tee -a "$LOG" >&2
+          echo "           install manually later: cp $git_pre_commit_src $git_pre_commit && chmod +x $git_pre_commit" >&2
+          ;;
+      esac
+    else
+      cp "$git_pre_commit_src" "$git_pre_commit"
+      chmod +x "$git_pre_commit"
+      echo "installed  $git_pre_commit (migration-lock gate for terminal commits)" | tee -a "$LOG" >&2
+    fi
+  elif [[ -f "$STARTER/templates/git-hooks/pre-commit.sh" && ! -d "$TARGET/.git" ]]; then
+    echo "note: $TARGET is not a git repo root; skipped .git/hooks/pre-commit install." | tee -a "$LOG" >&2
+  fi
+
   if [[ -f "$STARTER/templates/coordination-README.md" ]]; then
     install_file "$STARTER/templates/coordination-README.md" \
                  "$TARGET/.claude/coordination/README.md"
