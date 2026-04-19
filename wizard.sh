@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# wizard.sh — ask 7 setup questions and emit the answers as JSON.
+# wizard.sh — ask 10 setup questions and emit the answers as JSON.
 # Called by install.sh. Safe to run standalone (prints JSON on the last line).
 set -euo pipefail
 
@@ -35,7 +35,7 @@ ask_choice() {
 }
 
 printf '\n=== claude-code-starter wizard ===\n' >&2
-printf 'Answer 7 questions. Blank answers become TODO: markers.\n\n' >&2
+printf 'Answer 10 questions. Blank answers become TODO: markers.\n\n' >&2
 
 # 1. Project name (default: cwd basename)
 default_name=$(basename "$PWD")

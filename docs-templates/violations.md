@@ -12,7 +12,10 @@ to commit while any `❌` entries remain.
 ## Examples
 
 <!--
-❌ packages/api/routes/user.ts:42 — raw supabase.from() call in route handler (Layer 1 violation)
-❌ packages/database/operations/users/updateEmail.ts:78 — missing audit_log write
-✅ apps/web/app/checkout/page.tsx:15 — removed SUPABASE_SERVICE_ROLE_KEY reference from client component
+Example entries (glyphs intentionally indented so pre-commit-gate.sh's
+`^❌` grep does not match example lines):
+
+    ❌ packages/api/routes/user.ts:42 — raw supabase.from() call in route handler (Layer 1 violation)
+    ❌ packages/database/operations/users/updateEmail.ts:78 — missing audit_log write
+    ✅ apps/web/app/checkout/page.tsx:15 — removed SUPABASE_SERVICE_ROLE_KEY reference from client component
 -->

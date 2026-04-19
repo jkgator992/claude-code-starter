@@ -19,8 +19,8 @@ OPS_ROOT_PATH="${OPS_ROOT_PATH:-packages/database/operations/src}"
 
 [[ -d "$OPS_ROOT_PATH" ]] || exit 0
 
-OPS_ROOT_PATH="$OPS_ROOT_PATH" python3 - <<'PY' 2>/dev/null || true
-import os, re, csv, datetime, pathlib
+OPS_ROOT_PATH="$OPS_ROOT_PATH" python3 - <<'PY' || true
+import os, re, csv, datetime, pathlib, sys
 
 OPS_ROOT = pathlib.Path(os.environ.get("OPS_ROOT_PATH", "packages/database/operations/src"))
 REGISTRY = pathlib.Path("docs/tests/test-registry.csv")
@@ -112,7 +112,48 @@ def should_skip(path: pathlib.Path) -> bool:
         return True
     if "__tests__" in path.parts:
         return True
+    # Shared-internal convention: _*.ts files are infrastructure, not units of behavior.
+    if name.startswith("_"):
+        return True
     return False
+
+def has_consolidated_test(src: pathlib.Path) -> bool:
+    # A consolidated test file <dir-basename>.test.ts in __tests__/ covers
+    # every op in the directory; per-op stubs would be redundant noise.
+    consolidated = src.parent / "__tests__" / (src.parent.name + ".test.ts")
+    return consolidated.exists()
+
+EXPORT_CONST_RE = re.compile(r"export\s+(?:const|function|class|async\s+function)\s+(\w+)")
+EXPORT_LIST_RE = re.compile(r"export\s*\{([^}]*)\}")
+SUFFIX_STRIPS = ("WithServiceRole", "WithUserClient", "WithAdminClient")
+
+def resolve_exports(src: pathlib.Path) -> list:
+    try:
+        text = src.read_text()
+    except Exception:
+        return []
+    names = list(EXPORT_CONST_RE.findall(text))
+    for match in EXPORT_LIST_RE.findall(text):
+        for part in match.split(","):
+            token = part.strip().split(" as ")[0].strip()
+            if token:
+                names.append(token)
+    return names
+
+def matches_basename(exports: list, basename: str) -> str:
+    camel = to_camel_case(basename)
+    candidates = {camel}
+    for suffix in SUFFIX_STRIPS:
+        if camel.endswith(suffix):
+            candidates.add(camel[: -len(suffix)])
+    # Also consider exports whose name, with suffix stripped, matches the basename camel.
+    for name in exports:
+        if name in candidates:
+            return name
+        for suffix in SUFFIX_STRIPS:
+            if name.endswith(suffix) and name[: -len(suffix)] == camel:
+                return name
+    return ""
 
 def auto_id(basename: str) -> str:
     return "AUTO-" + re.sub(r"[-\s]+", "_", basename).upper()
@@ -162,12 +203,22 @@ def main() -> None:
         if test_file.exists():
             continue
 
-        op_name = to_camel_case(src.stem)
+        if has_consolidated_test(src):
+            continue
+
+        exports = resolve_exports(src)
+        export_name = matches_basename(exports, src.stem)
+        if not export_name:
+            sys.stderr.write(
+                f"generate-tests.sh: skipping stub for {src} — no matching "
+                f"export found; create the test file manually if needed.\n"
+            )
+            continue
 
         test_dir.mkdir(parents=True, exist_ok=True)
         import_op = relative_import(test_file, src)
         import_setup = relative_import(test_file, setup_file)
-        test_file.write_text(skeleton(op_name, import_op, import_setup))
+        test_file.write_text(skeleton(export_name, import_op, import_setup))
 
         row_id = auto_id(src.stem)
         if row_id not in existing_ids:
